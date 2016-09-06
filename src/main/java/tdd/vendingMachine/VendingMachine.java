@@ -1,6 +1,6 @@
 package tdd.vendingMachine;
 
-import tdd.errorDescription.ErrorDescription;
+import tdd.message.Message;
 import tdd.product.Product;
 
 import java.math.BigDecimal;
@@ -12,30 +12,15 @@ public class VendingMachine {
 
     private int currentShelfNumber = 0;
     private BigDecimal currentAmount = new BigDecimal("0.0");
+    private BigDecimal machinesMoney = new BigDecimal("0.0");
+
+    private boolean wasPutWrongDenomination = false;
 
     public VendingMachine() {
 
         shelves.add(new Product("Cola drink 0.25l", 3, "11"));
         shelves.add(new Product("Chocolate bar", 5, "8"));
         shelves.add(new Product("Mineral water 0.33l", 4, "6"));
-
-    }
-
-    public static void main(String[] args) {
-
-        //System.out.print(new VendingMachine().setNumberOfShelf(1));
-        //Denominations.getCurrentDenomination("5");
-        //System.out.print(new VendingMachine().getCurretnAmountToScreen());
-
-        VendingMachine machine = new VendingMachine();
-
-        machine.setNumberOfShelf(3);
-
-        machine.insertNewDenomination("1");
-        machine.insertNewDenomination("2");
-        machine.insertNewDenomination("2");
-
-        machine.isMoneyEnough();
 
     }
 
@@ -64,7 +49,7 @@ public class VendingMachine {
         BigDecimal bdValue = getPriceByShelfNumber(shelfNumber);
 
         if (bdValue.equals(new BigDecimal("0.0"))) {
-            return ErrorDescription.NO_SHELF_WITH_THIS_NUMBER;
+            return Message.NO_SHELF_WITH_THIS_NUMBER;
         } else {
             return bdValue.toString();
         }
@@ -89,9 +74,13 @@ public class VendingMachine {
 
     public MachineResponse insertNewDenomination(String newDenumination) {
 
+        if (wasPutWrongDenomination) return new MachineResponse(Message.WRONG_DENOMINATION, "", "0.0");
+
         float fValue = Denominations.getCurrentDenomination(newDenumination);
+
         if (fValue <= 0) {
-            return new MachineResponse(ErrorDescription.WRONG_DENOMINATION, "", "0.0");
+            wasPutWrongDenomination = true;
+            return new MachineResponse(Message.WRONG_DENOMINATION, "", "0.0");
         }
 
         currentAmount = currentAmount.add(new BigDecimal(fValue));
@@ -104,11 +93,11 @@ public class VendingMachine {
 
     }
 
-    public MachineResponse checkAndGiveOutTheProduct() {
+    private MachineResponse checkAndGiveOutTheProduct() {
 
         BigDecimal curPrice = getPriceByShelfNumber(currentShelfNumber);
 
-        if (curPrice.equals(new BigDecimal("0.0"))) return new MachineResponse(ErrorDescription.CHOOSE_THE_SHELF, "", "0.0");
+        if (curPrice.equals(new BigDecimal("0.0"))) return new MachineResponse(Message.CHOOSE_THE_SHELF, "", "0.0");
 
         BigDecimal restAmount = currentAmount.subtract(curPrice);
 
@@ -116,16 +105,27 @@ public class VendingMachine {
 
             case 0:
                 //Enough money and there is no change
-                return new MachineResponse(ErrorDescription.GET_YOUR_PRODUCT, getProductNameByShelfNumber(currentShelfNumber), "0.0");
+                machinesMoney = machinesMoney.add(currentAmount);
+                currentAmount = new BigDecimal("0.0");
+                return new MachineResponse(Message.GET_YOUR_PRODUCT, getProductNameByShelfNumber(currentShelfNumber), "0.0");
             case 1:
-                //Enough money and we have to give away the change
-                return new MachineResponse(ErrorDescription.GET_YOUR_PRODUCT, getProductNameByShelfNumber(currentShelfNumber), restAmount.toString());
+                //Enough money and we have to check and give away the change
+                if (machinesMoney.compareTo(restAmount) >= 0) {
+                    machinesMoney = machinesMoney.add(currentAmount).subtract(restAmount);
+                    currentAmount = new BigDecimal("0.0");
+                    return new MachineResponse(Message.GET_YOUR_PRODUCT, getProductNameByShelfNumber(currentShelfNumber), restAmount.toString());
+                } else {
+                    MachineResponse response = new MachineResponse(Message.NO_CHANGE_TAKE_MONEY_BACK, "", currentAmount.toString());
+                    currentAmount = new BigDecimal("0.0");
+                    return response;
+                }
+
             case -1:
                 //isn't enough money yet
                 return new MachineResponse(showRestOfAmountAtScreen(), "", "0.0");
         }
 
-        return new MachineResponse(ErrorDescription.CHOOSE_THE_SHELF, "", "0.0");
+        return new MachineResponse(Message.CHOOSE_THE_SHELF, "", "0.0");
 
     }
 
@@ -133,7 +133,7 @@ public class VendingMachine {
 
         BigDecimal curPrice = getPriceByShelfNumber(currentShelfNumber);
 
-        if (curPrice.equals(new BigDecimal("0.0"))) return ErrorDescription.CHOOSE_THE_SHELF;
+        if (curPrice.equals(new BigDecimal("0.0"))) return Message.CHOOSE_THE_SHELF;
 
         BigDecimal restAmount = currentAmount.subtract(curPrice);
 
@@ -142,7 +142,7 @@ public class VendingMachine {
             return restAmount.negate().toString();
         } else {
             //it should never happen
-            return ErrorDescription.ERR_PRODUCT_MUST_HAVE_BEEN_GIVEN;
+            return Message.ERR_PRODUCT_MUST_HAVE_BEEN_GIVEN;
         }
 
     }
@@ -165,4 +165,22 @@ public class VendingMachine {
         return currentAmount.toString();
     }
 
+    public MachineResponse cancelButton() {
+
+        MachineResponse response = new MachineResponse(Message.TAKE_YOUR_MONEY_BACK, "", currentAmount.toString());
+
+        currentAmount = new BigDecimal("0.0");
+        wasPutWrongDenomination = false;
+
+        return response;
+
+    }
+
+    public String getMachinesMoneyToString() {
+        return machinesMoney.toString();
+    }
+
+    public void setMachinesMoney(String machinesMoney) {
+        this.machinesMoney = new BigDecimal(machinesMoney);
+    }
 }

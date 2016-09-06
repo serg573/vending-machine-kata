@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 public class Product {
 
     private String name;
-    private int quantity;
+    private int quantity;  // it doesn't used in current release
     private BigDecimal price;
 
     public Product(String name, int quantity, String price) {
@@ -39,5 +39,14 @@ public class Product {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    @Override
+    public String toString() {
+        return "Product{" +
+            "name='" + name + '\'' +
+            ", quantity=" + quantity +
+            ", price=" + price +
+            '}';
     }
 }

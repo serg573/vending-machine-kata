@@ -1,19 +1,21 @@
 package tdd.vendingMachine;
 
 import org.assertj.core.api.Assertions;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
-import tdd.errorDescription.ErrorDescription;
+import tdd.message.Message;
 
 public class VendingMachineTest {
 
-    VendingMachine machine = new VendingMachine();
+    private VendingMachine machine = new VendingMachine();
 
     @Test
     public void checkPricesOfProductsByShelfNumber() {
 
         //wrong number of shelf
-        Assertions.assertThat(machine.getPriceByShelfNumberToScreen(0)).isEqualTo(ErrorDescription.NO_SHELF_WITH_THIS_NUMBER);
-        Assertions.assertThat(machine.getPriceByShelfNumberToScreen(4)).isEqualTo(ErrorDescription.NO_SHELF_WITH_THIS_NUMBER);
+        Assertions.assertThat(machine.getPriceByShelfNumberToScreen(0)).isEqualTo(Message.NO_SHELF_WITH_THIS_NUMBER);
+        Assertions.assertThat(machine.getPriceByShelfNumberToScreen(4)).isEqualTo(Message.NO_SHELF_WITH_THIS_NUMBER);
 
         //right number but only if there are always the same products at the same shelves
         Assertions.assertThat(machine.getPriceByShelfNumberToScreen(1)).isEqualTo("11");
@@ -27,6 +29,8 @@ public class VendingMachineTest {
 
         //wrong denomination
         Assertions.assertThat(Denominations.getCurrentDenomination("0")).isEqualTo(0.0f);
+        Assertions.assertThat(Denominations.getCurrentDenomination("1.5")).isEqualTo(0.0f);
+        Assertions.assertThat(Denominations.getCurrentDenomination("3")).isEqualTo(0.0f);
 
         //5, 2, 1, 0.5, 0.2, 0.1
         Assertions.assertThat(Denominations.getCurrentDenomination("5")).isEqualTo(5.0f);
@@ -39,12 +43,11 @@ public class VendingMachineTest {
     }
 
     @Test
-    public void checkRestOfAmountOfPrice() {
+    public void checkShelfNumbers() {
 
-        //to start with we should choose a shelf
-
-        //test wrong numbers
+        //wrong numbers of shelves
         Assertions.assertThat(machine.setNumberOfShelf(-1)).isEqualTo(false);
+        Assertions.assertThat(machine.setNumberOfShelf(4)).isEqualTo(false);
         Assertions.assertThat(machine.setNumberOfShelf(10)).isEqualTo(false);
 
         //test good numbers
@@ -52,28 +55,60 @@ public class VendingMachineTest {
         Assertions.assertThat(machine.setNumberOfShelf(2)).isEqualTo(true);
         Assertions.assertThat(machine.setNumberOfShelf(3)).isEqualTo(true);
 
-        //well, for now our current shelf number is 3
-        //let's start insert money
+    }
 
-        //test with wrong denominations
-        Assertions.assertThat(machine.insertNewDenomination("10")).isEqualTo(new MachineResponse(ErrorDescription.WRONG_DENOMINATION, "", "0.0"));
-        Assertions.assertThat(machine.insertNewDenomination("3")).isEqualTo(new MachineResponse(ErrorDescription.WRONG_DENOMINATION, "", "0.0"));
-        Assertions.assertThat(machine.getCurretnAmountToScreen()).isEqualTo("0.0");
+    @Test
+    public void checkGettingProductWithoutChange() {
 
-        //test with right denominations
-        Assertions.assertThat(machine.insertNewDenomination("1")).isEqualTo(new MachineResponse(machine.showRestOfAmountAtScreen(), "", "0.0"));
-            Assertions.assertThat(machine.isMoneyEnough()).isEqualTo(false);
-            Assertions.assertThat(machine.showRestOfAmountAtScreen()).isEqualTo("5.0");
+        machine.setMachinesMoney("0.0");
 
+        //to set shelf number to 3: "Mineral water 0.33l"
+        Assertions.assertThat(machine.setNumberOfShelf(3)).isEqualTo(true);
+
+        Assertions.assertThat(machine.insertNewDenomination("5")).isEqualTo(new MachineResponse("1.0", "", "0.0"));
+        Assertions.assertThat(machine.insertNewDenomination("1")).isEqualTo(new MachineResponse(Message.GET_YOUR_PRODUCT, "Mineral water 0.33l", "0.0"));
+
+        //check current machine money
+        Assertions.assertThat(machine.getMachinesMoneyToString()).isEqualTo("6.0");
+
+    }
+
+    @Test
+    public void checkGettingProductWithChange() {
+
+        machine.setMachinesMoney("10.0");
+
+        //to set shelf number to 2: "Chocolate bar"
+        Assertions.assertThat(machine.setNumberOfShelf(2)).isEqualTo(true);
+
+        Assertions.assertThat(machine.insertNewDenomination("5")).isEqualTo(new MachineResponse(machine.showRestOfAmountAtScreen(), "", "0.0"));
+        Assertions.assertThat(machine.insertNewDenomination("5")).isEqualTo(new MachineResponse(Message.GET_YOUR_PRODUCT, "Chocolate bar", "2.0"));
+
+    }
+
+    public void checkCaseWhenThereIsNotEnoughChange() {
+
+        machine.setMachinesMoney("0.0");
+
+        //to set shelf number to 1: "Cola drink 0.25l"
+        Assertions.assertThat(machine.setNumberOfShelf(1)).isEqualTo(true);
+
+        Assertions.assertThat(machine.insertNewDenomination("5")).isEqualTo(new MachineResponse(machine.showRestOfAmountAtScreen(), "", "0.0"));
+        Assertions.assertThat(machine.insertNewDenomination("5")).isEqualTo(new MachineResponse(machine.showRestOfAmountAtScreen(), "", "0.0"));
+        Assertions.assertThat(machine.insertNewDenomination("5")).isEqualTo(new MachineResponse(Message.NO_CHANGE_TAKE_MONEY_BACK, "", "15.0"));
+
+    }
+
+    @Test
+    public void checkInsufficientCase_cancelButton() {
+
+        //to set shelf number to 1: "Cola drink 0.25l"
+        Assertions.assertThat(machine.setNumberOfShelf(1)).isEqualTo(true);
+
+        Assertions.assertThat(machine.insertNewDenomination("5")).isEqualTo(new MachineResponse(machine.showRestOfAmountAtScreen(), "", "0.0"));
         Assertions.assertThat(machine.insertNewDenomination("2")).isEqualTo(new MachineResponse(machine.showRestOfAmountAtScreen(), "", "0.0"));
-            Assertions.assertThat(machine.isMoneyEnough()).isEqualTo(false);
-            Assertions.assertThat(machine.showRestOfAmountAtScreen()).isEqualTo("3.0");
 
-        Assertions.assertThat(machine.insertNewDenomination("2")).isEqualTo(new MachineResponse(machine.showRestOfAmountAtScreen(), "", "0.0"));
-            Assertions.assertThat(machine.isMoneyEnough()).isEqualTo(false);
-            Assertions.assertThat(machine.showRestOfAmountAtScreen()).isEqualTo("1.0");
-
-        Assertions.assertThat(machine.insertNewDenomination("2")).isEqualTo(new MachineResponse(ErrorDescription.GET_YOUR_PRODUCT, "Mineral water 0.33l", "1.0"));
+        Assertions.assertThat(machine.cancelButton()).isEqualTo(new MachineResponse(Message.TAKE_YOUR_MONEY_BACK, "", "7.0"));
 
     }
 

@@ -48,4 +48,13 @@ public class MachineResponse {
         result = 31 * result + (change != null ? change.hashCode() : 0);
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "MachineResponse{" +
+            "screenMessage='" + screenMessage + '\'' +
+            ", product='" + product + '\'' +
+            ", change='" + change + '\'' +
+            '}';
+    }
 }
